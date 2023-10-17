@@ -113,17 +113,11 @@ deploy:
 
 ### 監視
 
-#### サーバメトリクスの監視
+#### top 叩いてスクショ撮る
 
-- Prometheus
-  - install,デーモン化で EC2 起動と共にサービス起動するようにする: https://hamutetublog.com/prometheus-grafana-install/#toc4
-  - 9090 ポートのリクエストを許す
-- node_exporter
-  - install,デーモン化で EC2 起動と共にサービス起動するようにする:https://zenn.dev/uchidaryo/articles/setup-node-exporter#%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89
-  - (ポートは 9100 で動く)
-- Prometheus 側で、9100 ポートを見るようにする（prometheus.yml をいじるようにする）
+DB がボトルネックになってる？
 
-#### アクセスログの監視
+#### アクセスログの監視(まずやりたい!)
 
 - nginx の/var/nginx/access.log ログを ltsv 形式にする(json もあるっぽいけど一旦実績が先にできたので ltsv)
   - 1. nginx.conf を/etc/nginx に再配置する(make 等経由しつつ Local からいじれると尚良い)
@@ -133,10 +127,28 @@ deploy:
   - aggregates 以下は、マニュアル等から API 一覧を見て生成(今回だと ID 部分を`[0-9a-z]*`で置き換えするところ)
 
 ```
+sudo truncate -s 0 -c /var/log/nginx/access.log //ログの中身削除
+
+ベンチ実行
+
 alp -f /var/log/nginx/access.log --aggregates=/api/player/player/[0-9a-z]*,/api/player/competition/[0-9a-z]*/ranking,/api/organizer/competition/[0-9a-z]*/score,/api/organizer/competition/[0-9a-z]*/finish,/api/organizer/player/[0-9a-z]*/disqualified
 ```
 
 ※alp は単一 log ファイルの解析にはちょうどいいが、実務だと複数サーバいっぱいあったりして微妙なので、そこで ElasticSearch とか Redshift とか出てくるらしい(ISUCON 本より)
+
+#### サーバメトリクスの監視
+
+- ※かっこいいけど、何に生かせばいいかわかってない。。
+
+* Prometheus
+  - install,デーモン化で EC2 起動と共にサービス起動するようにする: https://hamutetublog.com/prometheus-grafana-install/#toc4
+  - 9090 ポートのリクエストを許す
+* node_exporter
+  - install,デーモン化で EC2 起動と共にサービス起動するようにする:https://zenn.dev/uchidaryo/articles/setup-node-exporter#%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89
+  - (ポートは 9100 で動く)
+* Prometheus 側で、9100 ポートを見るようにする（prometheus.yml をいじるようにする）
+
+## MYSQL のスロークエリせってい
 
 ## TODO
 
@@ -162,3 +174,10 @@ alp -f /var/log/nginx/access.log --aggregates=/api/player/player/[0-9a-z]*,/api/
 ```
 
 [補足]ここまでいじったり触ったりメモったりするのに連休 3 時間溶かした。ISUCON 本番なら最初の 30 分ぐらいで完了しないといけないところ。
+
+## nginx 再起動
+
+```
+//何が生きてるか確認
+systemctl list-unit-files -t service
+```
